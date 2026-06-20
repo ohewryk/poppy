@@ -378,6 +378,44 @@
       root.addEventListener("click", function (e) {
         if (e.target.closest("#dl-csv") && currentId) downloadCSV(currentId);
       });
+      // live multi-omics: fetch UniProt on demand when a Target row is clicked
+      root.addEventListener("click", function (e) {
+        var a = e.target.closest("a.name-link"); if (!a) return;
+        var m = (a.getAttribute("href") || "").match(/q=([^&]+)/); if (!m) return;
+        var tid = decodeURIComponent(m[1]);
+        if (typeof TGT === "undefined" || !(tid in TGT)) return;     // only intercept targets
+        e.preventDefault();
+        var row = a.closest(".reg-row"); if (!row) return;
+        var nx = row.nextElementSibling;
+        if (nx && nx.classList.contains("omics-panel")) { nx.remove(); return; }   // toggle
+        var name = (TGT[tid] && TGT[tid].name) || tid;
+        var panel = document.createElement("div");
+        panel.className = "omics-panel reg-row";
+        panel.style.cssText = "grid-column:1/-1;padding:4px 4px 14px;";
+        panel.innerHTML = '<div class="gtags"><span class="gtag">looking up ' + name + ' in UniProt…</span></div>';
+        row.after(panel);
+        fetch("https://rest.uniprot.org/uniprotkb/search?query=" +
+              encodeURIComponent('"' + name + '" AND reviewed:true') +
+              "&format=json&size=1&fields=accession,gene_primary,protein_name,organism_name,xref_geneid")
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var res = (j.results || [])[0];
+            if (!res) { panel.innerHTML = '<div class="gtags"><span class="gtag">no UniProt match for ' + name + '</span></div>'; return; }
+            var acc = res.primaryAccession || "";
+            var gene = ((res.genes || [{}])[0].geneName || {}).value || "";
+            var prot = (((res.proteinDescription || {}).recommendedName || {}).fullName || {}).value || "";
+            var org = (res.organism || {}).scientificName || "";
+            var ncbi = ((res.uniProtKBCrossReferences || []).filter(function (x) { return x.database === "GeneID"; })[0] || {}).id || "";
+            var t = [];
+            if (gene) t.push('<a class="gtag gtag-gene" target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/gene/?term=' + encodeURIComponent(gene) + '%5Bsym%5D"><span class="gk">gene</span>' + gene + '</a>');
+            if (ncbi) t.push('<a class="gtag" target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/gene/' + ncbi + '"><span class="gk">ncbi gene</span>' + ncbi + '</a>');
+            if (acc) t.push('<a class="gtag" target="_blank" rel="noopener" href="https://www.uniprot.org/uniprotkb/' + acc + '/entry"><span class="gk">uniprot</span>' + acc + '</a>');
+            if (prot) t.push('<span class="gtag"><span class="gk">protein</span>' + prot + '</span>');
+            if (org) t.push('<span class="gtag"><span class="gk">organism</span>' + org + '</span>');
+            panel.innerHTML = '<div class="gtags">' + t.join("") + '<span class="gk" style="opacity:.6">live · UniProt</span></div>';
+          })
+          .catch(function () { panel.innerHTML = '<div class="gtags"><span class="gtag">UniProt lookup failed</span></div>'; });
+      });
 
       function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
