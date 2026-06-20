@@ -286,7 +286,9 @@
       var input = document.getElementById("reg-search");
       var currentId = null;
       // ---- full-ontology browse: search all plants, lazy-load shards ----
-      var FULL = [], FULL_BY_ID = {}, COMP_CACHE = {};
+      var FULL = [], FULL_BY_ID = {}, COMP_CACHE = {}, TGT = {}, CT = {};
+      fetch("data/targets.json").then(function(r){return r.ok?r.json():{};}).then(function(j){TGT=j||{};}).catch(function(){});
+      fetch("data/compound_targets.json").then(function(r){return r.ok?r.json():{};}).then(function(j){CT=j||{};}).catch(function(){});
       function djb2(s){var h=5381;for(var i=0;i<s.length;i++){h=((h*33)^s.charCodeAt(i))&0xFFFFFFFF;}return h&255;}
       fetch("data/plants_index.json").then(function(r){return r.ok?r.json():[];}).then(function(a){
         FULL=a||[]; for(var i=0;i<FULL.length;i++){FULL_BY_ID[FULL[i].id]=FULL[i];}
@@ -321,6 +323,17 @@
                         if(rec.inchikey)p.push(["hasInChIKey",rec.inchikey]);}
                 N[c]={label:(rec&&rec.name)||c, role:"Compound", props:p};}
               if(!E.some(function(e){return e.s===pid&&e.t===c;}))E.push({s:pid,t:c,p:"hasCompound"});
+            });
+            cids.forEach(function(c){
+              (CT[c]||[]).forEach(function(tid){
+                var tg=TGT[tid]; if(!tg) return;
+                if(!N[tid]){var tp=[];
+                  if(tg.gene)tp.push(["hasGene",tg.gene]);
+                  if(tg.protein)tp.push(["hasProtein",tg.protein]);
+                  if(tg.uniprot)tp.push(["hasUniProt",tg.uniprot]);
+                  N[tid]={label:(tg.name||tid),role:"Target",props:tp};}
+                if(!E.some(function(e){return e.s===c&&e.t===tid;}))E.push({s:c,t:tid,p:"targetsPathway"});
+              });
             });
             msg.textContent=""; render(pid);
           });
