@@ -640,6 +640,15 @@
         msg.textContent = 'No entry for "' + query + '".';
       }
 
+      // in-place navigation for nodes already in memory (no reload) so plant -> compound -> target works
+      root.addEventListener("click", function (e) {
+        if (e.target.closest("#dl-csv")) return;
+        var a = e.target.closest("a.name-link"); if (!a) return;
+        var m = (a.getAttribute("href") || "").match(/q=([^&]+)/); if (!m) return;
+        var id = decodeURIComponent(m[1]);
+        if (typeof TGT !== "undefined" && id in TGT) return;   // targets handled by the omics listener
+        if (window.POPPY.NODES[id]) { e.preventDefault(); render(id); }
+      });
       document.getElementById("reg-search-btn").addEventListener("click", function () { lookup(); });
       input.addEventListener("keydown", function (e) { if (e.key === "Enter") lookup(); });
       document.querySelectorAll(".reg-chips .chip").forEach(function (c) {
