@@ -1,44 +1,38 @@
 # POPPy — Phyto-Ontology Platform for Pharmacology
 
-POPPy is a reproducible pipeline for building a phytotherapy ontology / knowledge graph.
-It ingests CMAUP/ChEMBL/SQL sources, validates plants (NCBI/POWO), enriches compounds
-(SMILES, MACCS via RDKit), and exports OWL/RDF (TTL/RDF/XML). A static site in `web/`
-publishes build stats and downloads.
+POPPy is a reproducible phytotherapy ontology / knowledge graph and a static website to
+explore it. It links medicinal plants to their natural-product compounds, drug targets, and
+clinical evidence — enriched with names and cross-references from PubChem, ChEBI, UniChem,
+and COCONUT — and surfaces multi-omic data (gene / protein / UniProt, NCBI Taxonomy) live,
+on demand, from UniProt/NCBI.
 
-[![CI](https://github.com/RomanoLab/poppy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RomanoLab/poppy/actions/workflows/ci.yml)
-[![Pages](https://github.com/RomanoLab/poppy/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/RomanoLab/poppy/actions/workflows/pages.yml)
+## Explore it
+- Live site: https://romanolab.github.io/poppy/
+- Full ontology (RDF/XML, ~2 GB): https://upenn.box.com/v/poppyontology
 
-> See `INTEGRATION_NOTES.md` for a deeper tour of the structure and CSV/SQL mappings.
+## Repository
+- notebooks/Ontology_Work_clean.ipynb — the ontology build pipeline (authoritative build-of-record)
+- website/ — the static site; website/data/ is the sharded JSON the Explore page loads
+- data/ontology/poppystructure.rdf — hand-curated TBox scaffold
+- data/SOURCES.md — input datasets, versions, and where to obtain them
+- src/poppy/, scripts/, configs/ — secondary config-driven pipeline (the notebook is authoritative)
 
----
+## Build and deploy
+- Assemble / rebuild: see ASSEMBLY.md (repo map, build order, data-layer generation)
+- Publish the site: see BRINGING_ONLINE.md (merge, then enable GitHub Pages)
 
-## Quickstart
+## How it works
+The site is fully static (no build step), published to GitHub Pages by
+.github/workflows/pages.yml. Explore searches all ~59,700 organisms and lazy-loads each
+plant's compounds and targets from website/data/. Gene/protein/UniProt and NCBI Taxonomy
+details are fetched live from UniProt/NCBI when a target or plant is opened — no NCBI data is
+stored in the ontology.
 
-```bash
-# 1) Create env
-python -m venv .venv && source .venv/bin/activate
+## Run locally
 
-# 2) Install (dev tools included: ruff/black/pytest)
-pip install -e ".[dev]"
+    cd website && python3 -m http.server 8000
+    # then open http://localhost:8000/Home.html
 
-# 3) Build ontology from config (see configs/ontology.yaml)
-python scripts/build_ontology.py --config configs/ontology.yaml
-
----
-
-## Build commands (Makefile)
-
-Run these from the repo root:
-
-```bash
-make -C build ontology   # build ontology via configs/ontology.yaml
-make -C build figures    # optional example figure(s) -> docs/figures
-make -C build web-data   # copy processed TTL + stats into web/data/
-make -C build all        # ontology + figures + web-data
-- [Ontology data ingest guide](docs/recipes/ontology-data-ingest.md)
-
-- [Recipes index](docs/recipes/README.md)
-- [Ontology data ingest guide](docs/recipes/ontology-data-ingest.md)
-## Download the ontology
-The full enriched POPPy ontology (RDF/XML) is hosted on Box:
-<https://upenn.box.com/v/poppyontology>
+## License
+Code: MIT. Ontology data: per-source licenses listed in data/SOURCES.md.
+Developed in the Romano Lab at the University of Pennsylvania.
