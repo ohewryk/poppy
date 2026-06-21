@@ -575,6 +575,7 @@
         window.scrollTo({ top: 0, behavior: "auto" });
         resolveMedia(subject);
         if (subject.role === "Target") showTargetOmics(subject);
+        if (subject.role === "Plant") showPlantOmics(subject);
       }
 
       // ── specimen plate imagery (Explore page only, hot-linked, nothing stored) ──
@@ -659,6 +660,35 @@
             box.innerHTML = t.join("");
           })
           .catch(function () { box.innerHTML = '<span class="gtag">UniProt lookup failed</span>'; });
+      }
+      // live taxonomy for a focused Plant — NCBI Taxonomy via UniProt, on demand
+      function showPlantOmics(subject) {
+        var host = root.querySelector(".subject"); if (!host) return;
+        var name = (subject.label || "");
+        var panel = document.createElement("div");
+        panel.style.cssText = "margin-top:22px;border-top:1px solid var(--rule);padding-top:14px;";
+        panel.innerHTML = '<div class="attrs-head">Multi-omics \u00b7 live from NCBI Taxonomy</div>'
+          + '<div class="gtags"><span class="gtag">looking up ' + esc(name) + '\u2026</span></div>';
+        host.appendChild(panel);
+        var box = panel.querySelector(".gtags");
+        fetch("https://rest.uniprot.org/taxonomy/search?query=" + encodeURIComponent('"' + name + '"') + "&format=json&size=1")
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var res = (j.results || [])[0];
+            if (!res) { box.innerHTML = '<span class="gtag">no NCBI taxonomy match for ' + esc(name) + '</span>'; return; }
+            var tax = res.taxonId || "";
+            var rank = res.rank || "";
+            var common = res.commonName || "";
+            var lin = (res.lineage || []).map(function (x) { return (x && (x.scientificName || x.name)) || x; }).filter(Boolean).join(" \u203a ");
+            var t = [];
+            if (tax) t.push('<a class="gtag gtag-gene" target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=' + tax + '"><span class="gk">ncbi taxon</span>' + tax + '</a>');
+            if (rank) t.push('<span class="gtag"><span class="gk">rank</span>' + rank + '</span>');
+            if (common) t.push('<span class="gtag"><span class="gk">common</span>' + common + '</span>');
+            if (tax) t.push('<a class="gtag" target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/datasets/taxonomy/' + tax + '/"><span class="gk">ncbi datasets</span>genome</a>');
+            box.innerHTML = t.join("");
+            if (lin) { var l = document.createElement("div"); l.style.cssText = "font-family:var(--mono);font-size:11px;color:var(--umber);opacity:.85;margin-top:8px;line-height:1.5;"; l.textContent = "Lineage: " + lin; panel.appendChild(l); }
+          })
+          .catch(function () { box.innerHTML = '<span class="gtag">NCBI taxonomy lookup failed</span>'; });
       }
       function renderEmpty() {
         root.innerHTML = '<section class="register"><div class="reg-empty">'
